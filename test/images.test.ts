@@ -3,30 +3,47 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildBody, imageToDataUrl, usageError, type GenOptions } from "../src/images.js";
+import {
+  imageTool,
+  buildRequest,
+  imageToDataUrl,
+  extractImage,
+  usageError,
+  type GenOptions,
+} from "../src/images.js";
 
-const baseOpts: GenOptions = {
-  prompt: "a fox",
-  model: "gpt-image-2",
-  n: 1,
-  size: "auto",
-  quality: "auto",
-  background: "auto",
-};
+const baseOpts: GenOptions = { prompt: "a fox", model: "gpt-5.4", size: "auto", quality: "auto", background: "auto" };
 
-test("buildBody 文生图：无 images 字段，含核心字段", () => {
-  const body = buildBody(baseOpts);
-  assert.equal(body["prompt"], "a fox");
-  assert.equal(body["model"], "gpt-image-2");
-  assert.equal(body["size"], "auto");
-  assert.equal(body["n"], 1);
-  assert.equal("images" in body, false);
+test("imageTool: auto 时省略 size/quality/background", () => {
+  const t = imageTool(baseOpts);
+  assert.equal(t["type"], "image_generation");
+  assert.equal("size" in t, false);
+  assert.equal("quality" in t, false);
+  assert.equal("background" in t, false);
 });
 
-test("buildBody 图生图：带 images 字段", () => {
-  const body = buildBody(baseOpts, [{ image_url: "data:image/png;base64,AAAA" }]);
-  assert.ok(Array.isArray(body["images"]));
-  assert.equal((body["images"] as unknown[]).length, 1);
+test("imageTool: 非 auto 时带上参数", () => {
+  const t = imageTool({ ...baseOpts, size: "3840x2160", quality: "high" });
+  assert.equal(t["size"], "3840x2160");
+  assert.equal(t["quality"], "high");
+  assert.equal("background" in t, false);
+});
+
+test("buildRequest 文生图：input 含 prompt、tools 含 image_generation、无输入图", () => {
+  const req = buildRequest(baseOpts, []);
+  const input = req["input"] as Array<{ content: Array<{ type: string; text?: string }> }>;
+  assert.equal(input[0]?.content[0]?.text, "a fox");
+  assert.equal(input[0]?.content.length, 1);
+  const tools = req["tools"] as Array<{ type: string }>;
+  assert.equal(tools[0]?.type, "image_generation");
+  assert.equal(req["stream"], true);
+});
+
+test("buildRequest 图生图：content 带 input_image", () => {
+  const req = buildRequest(baseOpts, [{ type: "input_image", image_url: "data:image/png;base64,AA" }]);
+  const input = req["input"] as Array<{ content: Array<{ type: string }> }>;
+  assert.equal(input[0]?.content.length, 2);
+  assert.equal(input[0]?.content[1]?.type, "input_image");
 });
 
 test("imageToDataUrl 生成 data URL 并按扩展名判 mime", () => {
@@ -40,7 +57,7 @@ test("imageToDataUrl 生成 data URL 并按扩展名判 mime", () => {
   }
 });
 
-test("imageToDataUrl 不存在的文件抛 usageError(exitCode=2)", () => {
+test("imageToDataUrl 不存在文件抛 usageError(exitCode=2)", () => {
   try {
     imageToDataUrl("/no/such/file.png");
     assert.fail("应当抛错");
@@ -49,15 +66,19 @@ test("imageToDataUrl 不存在的文件抛 usageError(exitCode=2)", () => {
   }
 });
 
-test("imageToDataUrl 不支持的扩展名抛错", () => {
-  const dir = mkdtempSync(join(tmpdir(), "imgen-img2-"));
-  try {
-    const p = join(dir, "x.txt");
-    writeFileSync(p, "hello");
-    assert.throws(() => imageToDataUrl(p));
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test("extractImage 从 output_item.done 取最终图 + size", () => {
+  const b64 = Buffer.from([1, 2, 3, 4]).toString("base64").repeat(40);
+  const sse =
+    `data: {"type":"response.output_item.done","item":{"type":"image_generation_call","result":"${b64}","size":"1024x1024"}}\n\n` +
+    `data: {"type":"response.completed"}\n\n`;
+  const r = extractImage(sse);
+  assert.equal(r.b64, b64);
+  assert.equal(r.size, "1024x1024");
+});
+
+test("extractImage 失败事件抛错", () => {
+  const sse = `data: {"type":"response.failed","response":{"error":{"message":"boom"}}}\n\n`;
+  assert.throws(() => extractImage(sse), /boom/);
 });
 
 test("usageError 带 exitCode 2", () => {

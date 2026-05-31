@@ -27,28 +27,27 @@ async function run(prompt: string, opts: CliOptions): Promise<void> {
   const base: GenOptions = {
     prompt,
     model: opts.model,
-    n,
     size: opts.size,
     quality: opts.quality,
     background: opts.background,
   };
+  const imagePaths = opts.image ?? [];
+  const isEdit = imagePaths.length > 0;
 
-  const resp =
-    opts.image && opts.image.length > 0
-      ? await edit(accessToken, accountId, { ...base, imagePaths: opts.image })
+  const b64s: string[] = [];
+  let lastSize = "";
+  for (let i = 0; i < n; i++) {
+    if (n > 1) process.stderr.write(`生成中 ${i + 1}/${n}…\n`);
+    const result = isEdit
+      ? await edit(accessToken, accountId, { ...base, imagePaths })
       : await generate(accessToken, accountId, base);
+    b64s.push(result.b64);
+    lastSize = result.size || lastSize;
+  }
 
-  const paths = saveImages(resp.data, out);
-  console.log(`✓ 已保存 ${paths.length} 张图片：`);
+  const paths = saveImages(b64s, out);
+  console.log(`✓ 已保存 ${paths.length} 张图片${lastSize ? `（${lastSize}）` : ""}：`);
   for (const p of paths) console.log(`  ${p}`);
-  if (resp.size || resp.quality) {
-    console.log(`  size=${resp.size ?? "?"} quality=${resp.quality ?? "?"}`);
-  }
-  if (resp.usage) {
-    console.log(
-      `  tokens: in=${resp.usage.input_tokens ?? 0} out=${resp.usage.output_tokens ?? 0}`,
-    );
-  }
 }
 
 const program = new Command();
@@ -59,10 +58,10 @@ program
   .option("-i, --image <path...>", "输入图（给了即图生图，1~5 张，可多次）")
   .option("-o, --out <path>", "输出路径（默认 ./image-<时间戳>.png）")
   .option("-n, --count <num>", "生成数量", "1")
-  .option("-s, --size <size>", "auto|1024x1024|1024x1536|1536x1024", "auto")
+  .option("-s, --size <size>", "尺寸，如 1024x1024 / 3840x2160（最长边 ≤3840），默认 auto", "auto")
   .option("-q, --quality <q>", "low|medium|high|auto", "auto")
   .option("-b, --background <bg>", "transparent|opaque|auto", "auto")
-  .option("-m, --model <model>", "图片模型", "gpt-image-2")
+  .option("-m, --model <model>", "编排模型（负责调用图片工具）", "gpt-5.4")
   .option("--codex-home <dir>", "codex 目录", defaultCodexHome())
   .action(async (prompt: string, opts: CliOptions) => {
     await run(prompt, opts);

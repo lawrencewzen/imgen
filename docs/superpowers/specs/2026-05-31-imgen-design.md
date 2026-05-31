@@ -1,6 +1,18 @@
 # imgen — Codex 图片生成 CLI 设计文档
 
-> 日期：2026-05-31　状态：已确认设计，待写实现计划
+> 日期：2026-05-31　状态：已实现并验证
+
+## ⚠️ 实现修订（2026-05-31，实测后）
+
+原设计（下文第 2/4/8/9 节）假设走直连 REST `/codex/images/{generations,edits}`，**实测不可行**，已按真实情况实现：
+
+1. **Cloudflare 质询**：`chatgpt.com` 对普通 Node `fetch` 返回 `403 cf-mitigated: challenge`（TLS 指纹被判 bot）。改用 **`@ossiana/node-libcurl`**（libcurl-impersonate + Chrome JA3/Akamai 指纹，复用 reverse 项目方案）即可通过。
+2. **直连 REST images 端点 404**：`/backend-api/codex/images/generations` 在生产后端不存在（codex main 新增、未部署）。真实可行路径是 **`POST /backend-api/codex/responses` + `tools:[{type:"image_generation"}]`**，流式 SSE，从 `response.output_item.done` 的 `image_generation_call` 取 base64 图片。
+3. **图生图**：在 user message 里加 `input_image`（base64 data URL）+ prompt，模型调工具编辑。
+4. **分辨率上限**：最长边 ≤ **3840px**（4K UHD 3840×2160 可；4096+ 被后端拒）。
+5. **模块变化**：新增 `src/http.ts`（node-libcurl 封装）；`images.ts` 改为 responses+工具流 + SSE 解析；`-m` 改为编排模型（默认 gpt-5.4）。
+
+下文保留原始设计作为记录。
 
 ## 1. 目标
 
