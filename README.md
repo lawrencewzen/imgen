@@ -10,7 +10,6 @@
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-blueviolet)
 ![Codex](https://img.shields.io/badge/Codex-skill-black)
 ![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-skill-blue)
-![AI Spark](https://img.shields.io/badge/AI%20Spark-开源工具-4ea8ff)
 
 </div>
 
@@ -73,26 +72,6 @@ imgen "a cute cat sticker" -b transparent -o cat.png
 | Codex | "生成一个透明背景的 logo" |
 | Gemini CLI | "把这张图改成赛博朋克风" |
 
----
+## 📄 License
 
-## 关于 AI Spark
-
-**AI Spark** 聚焦 AI 实战与超级个体成长，是由一线 AI 实战者维护的**开源知识社区**。我们把真实跑通的经验公开出来——能直接用的工具、Prompt、工作流和案例，让每个想用 AI 的人，都能从「看不懂」走到「跑通第一个工作流」，再走到「靠 AI 提效增收」。普通人不用再花 999 买课，就能拿到一线在用的东西。
-
-本仓库是 AI Spark 知识库「AI 编程与智能体」模块下的一个实战工具。
-
-📚 **知识库模块**
-
-| | | |
-|---|---|---|
-| 01 AI 小白入门 | 02 AI 工具与大模型 | 03 AI 编程与智能体 |
-| 04 AI 内容创作 | 05 AI 效率提升 | 06 AI 行业观察 |
-
-资料全部公开免费，每周更新。
-
-- 📖 **飞书知识库**：<https://lcnniolukk80.feishu.cn/wiki/U1ukwWrOei3FpUkQhAjclLOInug>
-- 💻 **开源项目**：[github.com/aisparkedu](https://github.com/aisparkedu)
-
-<div align="center">
-<sub>Made with 🎨 by AI Spark · 一线 AI 实战者的开源知识社区</sub>
-</div>
+MIT © [lawrencewzen](https://github.com/lawrencewzen)
