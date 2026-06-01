@@ -2,22 +2,15 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-用 ChatGPT **付费账号**（Plus/Pro）在命令行生成图片，支持**文生图**和**图生图**，零额外配置，复用本地 Codex 登录状态。
+在命令行生成图片，支持**文生图**和**图生图**，复用本地 Codex 登录状态。
 
 ## 安装
 
 ```bash
-git clone https://github.com/aisparkedu/imgen.git
-cd imgen
-./install-skill.sh
+curl -fsSL https://raw.githubusercontent.com/aisparkedu/imgen/main/install-skill.sh | bash
 ```
 
-脚本会自动完成：
-1. 安装依赖（`npm install`）
-2. 注册全局 `imgen` 命令（`npm link`）
-3. 安装 [Claude Code](https://github.com/anthropics/claude-code) Skill，之后直接说"帮我画一张……"即可触发
-
-> 依赖 [Codex CLI](https://github.com/openai/codex) 的登录状态（`~/.codex/auth.json`），使用前请先完成 Codex 登录。
+自动完成依赖安装、注册全局 `imgen` 命令，并为 Claude Code / Codex / Gemini CLI 安装 Skill。
 
 ## 用法
 
@@ -49,10 +42,4 @@ imgen "a nebula wallpaper" -s 3840x2160 -q high -o nebula.png
 # 透明背景贴纸
 imgen "a cute cat sticker" -b transparent -o cat.png
 ```
-
-## 说明
-
-- **必须付费号**：免费 ChatGPT 账号无法生成图片。
-- 生成图片会消耗 ChatGPT 套餐额度，比普通对话更多。
-- **分辨率上限：最长边 3840px** —— 4K UHD `3840x2160` 可用；`4096x4096` 会被拒绝。
 

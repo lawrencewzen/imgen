@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
+REPO="https://github.com/aisparkedu/imgen.git"
+INSTALL_DIR="$HOME/.local/share/imgen"
+
+# When piped via curl, $0 is "bash" and the script has no file path.
+# Clone the repo to a stable location and run from there.
+if [ ! -f "$(dirname "$0")/package.json" ]; then
+  echo "==> Cloning imgen..."
+  rm -rf "$INSTALL_DIR"
+  git clone --depth 1 "$REPO" "$INSTALL_DIR"
+  exec "$INSTALL_DIR/install-skill.sh"
+fi
+
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Installing dependencies..."
