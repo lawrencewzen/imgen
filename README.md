@@ -1,6 +1,5 @@
 # imgen
 
-[![CI](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml/badge.svg)](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 用 ChatGPT **付费账号**（Plus/Pro）在命令行生成图片，支持**文生图**和**图生图**，零额外配置，复用本地 Codex 登录状态。
@@ -8,12 +7,22 @@
 ## 安装
 
 ```bash
-npm install        # 含原生插件 @ossiana/node-libcurl（拉平台预编译二进制）
+git clone https://github.com/aisparkedu/imgen.git
+cd imgen
+npm install
 npm run build
-npm link           # 可选：装到全局 PATH
+npm link           # 装到全局 PATH，之后可直接用 imgen 命令
 ```
 
-未 `npm link` 时直接 `node dist/cli.js ...` 或 `npm run dev -- ...`。
+## Claude Code Skill 安装
+
+安装后可在 [Claude Code](https://github.com/anthropics/claude-code) 里直接说"帮我画一张……"，自动调用 imgen：
+
+```bash
+./install-skill.sh
+```
+
+脚本会在 `~/.claude/skills/imgen` 创建指向本目录的软链接，重启 Claude Code 后生效。
 
 ## 用法
 
