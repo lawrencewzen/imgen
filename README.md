@@ -7,21 +7,24 @@
 ## 安装
 
 ```bash
-git clone https://github.com/aisparkedu/imgen.git
-cd imgen
-npm install
-npm link           # 装到全局 PATH，之后可直接用 imgen 命令
+npm install -g aisparkedu/imgen
 ```
+
+安装完成后 `imgen` 命令即可全局使用。
+
+> 依赖 [Codex CLI](https://github.com/openai/codex) 的登录状态（`~/.codex/auth.json`），使用前请先完成 Codex 登录。
 
 ## Claude Code Skill 安装
 
-安装后可在 [Claude Code](https://github.com/anthropics/claude-code) 里直接说"帮我画一张……"，自动调用 imgen：
+安装 imgen 后，可在 [Claude Code](https://github.com/anthropics/claude-code) 里直接说"帮我画一张……"，自动调用 imgen：
 
 ```bash
+git clone https://github.com/aisparkedu/imgen.git
+cd imgen
 ./install-skill.sh
 ```
 
-脚本会在 `~/.claude/skills/imgen` 创建指向本目录的软链接，重启 Claude Code 后生效。
+脚本会在 `~/.claude/skills/imgen` 创建软链接，重启 Claude Code 后生效。
 
 ## 用法
 
