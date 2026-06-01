@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { randomUUID } from "node:crypto";
 import { ensureValidToken, defaultCodexHome } from "./auth.js";
 import { generate, edit, usageError } from "./images.js";
+import { loadOrCreateProfile } from "./fingerprint.js";
 import { saveImages } from "./output.js";
 async function run(prompt, opts) {
     const n = Number.parseInt(opts.count, 10);
@@ -10,6 +12,8 @@ async function run(prompt, opts) {
     }
     const out = opts.out ?? `./image-${Math.floor(Date.now() / 1000)}.png`;
     const { accessToken, accountId } = await ensureValidToken(opts.codexHome);
+    const tlsProfile = loadOrCreateProfile(opts.codexHome);
+    const sessionId = randomUUID();
     const base = {
         prompt,
         model: opts.model,
@@ -25,8 +29,8 @@ async function run(prompt, opts) {
         if (n > 1)
             process.stderr.write(`生成中 ${i + 1}/${n}…\n`);
         const result = isEdit
-            ? await edit(accessToken, accountId, { ...base, imagePaths })
-            : await generate(accessToken, accountId, base);
+            ? await edit(accessToken, accountId, sessionId, tlsProfile, { ...base, imagePaths })
+            : await generate(accessToken, accountId, sessionId, tlsProfile, base);
         b64s.push(result.b64);
         lastSize = result.size || lastSize;
     }

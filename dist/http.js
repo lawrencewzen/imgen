@@ -20,10 +20,10 @@ function getRequests() {
 /** A libcurl-impersonate session (auto Chrome JA3/Akamai, HTTP/2, own cookie jar). */
 export class ImpersonatedSession {
     session;
-    constructor(timeoutSeconds = 600) {
+    constructor(timeoutSeconds = 600, ja3 = "auto", akamai = "auto") {
         this.session = getRequests().session({
-            ja3: "auto",
-            akamai: "auto",
+            ja3,
+            akamai,
             httpVersion: "http2",
             redirect: false,
             timeout: timeoutSeconds,
