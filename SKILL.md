@@ -1,6 +1,6 @@
 ---
 name: imgen
-description: Generate or edit raster images with the imgen CLI (ChatGPT gpt-image backend, outputs PNG). Use this WHENEVER the user wants to create/generate/draw/make an image, picture, logo, icon, illustration, wallpaper, sticker, avatar, or art from a text description — OR edit/modify/restyle/change an existing image (img2img). Triggers on phrasings like "画一张…", "生成一张…图", "做个 logo / 图标 / 贴纸", "把这张图改成…", "P 成…", "give me a picture of…", "turn this photo into…", "make me an image of…" — even when the user never says "imgen". Do NOT use for charts / diagrams / flowcharts (use code or mermaid), UI mockups / web pages (use frontend-design), or SVG vector graphics.
+description: Generate or edit raster images with the imgen CLI (outputs PNG). Use this WHENEVER the user wants to create/generate/draw/make an image, picture, logo, icon, illustration, wallpaper, sticker, avatar, or art from a text description — OR edit/modify/restyle/change an existing image (img2img). Triggers on phrasings like "画一张…", "生成一张…图", "做个 logo / 图标 / 贴纸", "把这张图改成…", "P 成…", "give me a picture of…", "turn this photo into…", "make me an image of…" — even when the user never says "imgen". Do NOT use for charts / diagrams / flowcharts (use code or mermaid), UI mockups / web pages (use frontend-design), or SVG vector graphics.
 allowed-tools: Bash, Read
 ---
 
@@ -70,5 +70,5 @@ imgen "a cute cartoon cat sticker, bold clean outline" -b transparent -o cat.png
 
 ## 注意
 
-- **需付费 ChatGPT 号**（imgen 读 `~/.codex/auth.json`，由 Codex CLI 登录后生成）；免费号会 401/403。
+- 需已完成 Codex CLI 登录；未登录会 401/403。
 - 分辨率上限：最长边 **3840px**（4K UHD `3840x2160` 可，`4096` 会被拒）。
