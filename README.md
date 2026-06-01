@@ -6,7 +6,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-blueviolet)
 ![Codex](https://img.shields.io/badge/Codex-skill-black)
 ![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-skill-blue)
