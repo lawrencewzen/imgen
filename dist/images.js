@@ -21,7 +21,7 @@ const MIME_BY_EXT = {
 export function usageError(message) {
     return Object.assign(new Error(message), { exitCode: 2 });
 }
-function headers(token, accountId) {
+function headers(token, accountId, sessionId) {
     return {
         Authorization: `Bearer ${token}`,
         ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
@@ -30,7 +30,7 @@ function headers(token, accountId) {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
         "x-codex-turn-metadata": JSON.stringify({
-            session_id: randomUUID(),
+            session_id: sessionId,
             turn_id: randomUUID(),
             sandbox: "seatbelt",
         }),
@@ -159,10 +159,10 @@ function extractMessage(text) {
         return text.slice(0, 300);
     }
 }
-async function runRequest(token, accountId, request) {
-    const session = new ImpersonatedSession(REQUEST_TIMEOUT_S);
+async function runRequest(token, accountId, sessionId, tlsProfile, request) {
+    const session = new ImpersonatedSession(REQUEST_TIMEOUT_S, tlsProfile.ja3, tlsProfile.akamai);
     try {
-        const res = await session.post(RESPONSES_URL, headers(token, accountId), JSON.stringify(request));
+        const res = await session.post(RESPONSES_URL, headers(token, accountId, sessionId), JSON.stringify(request));
         if (res.status !== 200)
             throw mapHttpError(res.status, res.text);
         return extractImage(res.text);
@@ -171,13 +171,13 @@ async function runRequest(token, accountId, request) {
         session.close();
     }
 }
-export async function generate(token, accountId, o) {
-    return runRequest(token, accountId, buildRequest(o, []));
+export async function generate(token, accountId, sessionId, tlsProfile, o) {
+    return runRequest(token, accountId, sessionId, tlsProfile, buildRequest(o, []));
 }
-export async function edit(token, accountId, o) {
+export async function edit(token, accountId, sessionId, tlsProfile, o) {
     if (o.imagePaths.length < 1 || o.imagePaths.length > MAX_EDIT_IMAGES) {
         throw usageError(`图生图需要 1~${MAX_EDIT_IMAGES} 张输入图，收到 ${o.imagePaths.length} 张`);
     }
     const parts = o.imagePaths.map((p) => ({ type: "input_image", image_url: imageToDataUrl(p) }));
-    return runRequest(token, accountId, buildRequest(o, parts));
+    return runRequest(token, accountId, sessionId, tlsProfile, buildRequest(o, parts));
 }
