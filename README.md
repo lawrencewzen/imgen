@@ -15,14 +15,6 @@
 
 ---
 
-<p align="center">
-  <img src="demo/demo.gif" alt="imgen demo" width="700">
-</p>
-
-<p align="center">
-  <img src="demo/fox.png" alt="Generated: a red fox sitting in snow" width="300">
-</p>
-
 ---
 
 ## ✨ Features
