@@ -6,7 +6,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-blueviolet)
 ![Codex](https://img.shields.io/badge/Codex-skill-black)
 ![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-skill-blue)
@@ -24,13 +24,21 @@
 
 ## 📦 安装
 
+**macOS / Linux**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aisparkedu/imgen/main/install-skill.sh | bash
 ```
 
+**Windows**（PowerShell）
+
+```powershell
+irm https://raw.githubusercontent.com/aisparkedu/imgen/main/install-skill.ps1 | iex
+```
+
 自动完成：依赖安装 → 注册全局 `imgen` 命令 → 为 Claude Code / Codex / Gemini CLI 安装 Skill。
 
-> **前提**：已安装 [Codex CLI](https://github.com/openai/codex) 并完成登录。
+> **前提**：已安装 [Codex CLI](https://github.com/openai/codex) 并完成登录；Windows 仅支持 64 位（x64）。
 
 ## 🚀 用法
 
