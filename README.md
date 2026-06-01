@@ -10,7 +10,6 @@
 git clone https://github.com/aisparkedu/imgen.git
 cd imgen
 npm install
-npm run build
 npm link           # 装到全局 PATH，之后可直接用 imgen 命令
 ```
 
@@ -61,9 +60,3 @@ imgen "a cute cat sticker" -b transparent -o cat.png
 - 生成图片会消耗 ChatGPT 套餐额度，比普通对话更多。
 - **分辨率上限：最长边 3840px** —— 4K UHD `3840x2160` 可用；`4096x4096` 会被拒绝。
 
-## 开发
-
-```bash
-npm test           # 单元测试（auth / images / output 纯逻辑）
-npm run dev -- "a fox" -o /tmp/fox.png
-```
