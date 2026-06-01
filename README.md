@@ -3,14 +3,7 @@
 [![CI](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml/badge.svg)](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Codex 图片生成 CLI —— 用本地 codex 登录的 ChatGPT **付费账号**（Plus/Pro…）生成图片，支持**文生图**和**图生图**。
-
-## 原理
-
-- 用 **`@ossiana/node-libcurl`**（libcurl-impersonate，Chrome JA3 + Akamai HTTP/2 指纹）请求 `chatgpt.com`，绕过其 Cloudflare 机器人质询 —— 普通 Node `fetch` 会被 `403 cf-mitigated: challenge`。
-- 调 **Codex Responses 端点** `POST /backend-api/codex/responses` + 内置 **`image_generation` 工具**，从 SSE 流的 `image_generation_call` 事件里取出图片。
-  （直连 REST `/images/generations` 在生产后端 404、未部署，故走工具流。）
-- 认证复用 `~/.codex/auth.json`：token 过期自动刷新并安全写回（保留 `OPENAI_API_KEY` 等字段），零配置。
+用 ChatGPT **付费账号**（Plus/Pro）在命令行生成图片，支持**文生图**和**图生图**，零额外配置，复用本地 Codex 登录状态。
 
 ## 安装
 
@@ -55,10 +48,9 @@ imgen "a cute cat sticker" -b transparent -o cat.png
 
 ## 说明
 
-- **必须付费号**：免费 ChatGPT 账号生成图片会 401/403。
-- 每张图是一次完整 response turn（模型推理 + 工具生成），比纯文本多烧 ChatGPT 套餐额度。
-- **分辨率上限：最长边 3840px** —— 4K UHD `3840x2160` 可以；`4096x4096` 会被后端拒（`longest edge must be ≤ 3840`）。
-- 图片以 base64 在 SSE 里返回，直接解码写盘，无二次下载。
+- **必须付费号**：免费 ChatGPT 账号无法生成图片。
+- 生成图片会消耗 ChatGPT 套餐额度，比普通对话更多。
+- **分辨率上限：最长边 3840px** —— 4K UHD `3840x2160` 可用；`4096x4096` 会被拒绝。
 
 ## 开发
 

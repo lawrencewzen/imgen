@@ -24,12 +24,11 @@ npm test
 src/
   auth.ts      # Codex auth token loading & refresh
   cli.ts       # Commander CLI entry point
-  http.ts      # TLS-impersonated HTTP session (libcurl)
-  images.ts    # Codex responses API + SSE parsing
+  http.ts      # HTTP session (libcurl-based)
+  images.ts    # Image generation & SSE parsing
   output.ts    # File writing helpers
 test/
   *.test.ts    # Node built-in test runner
-skills/imgen/  # Claude Code skill definition
 ```
 
 ## Submitting changes
