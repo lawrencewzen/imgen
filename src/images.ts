@@ -9,7 +9,7 @@ import { ImpersonatedSession } from "./http.js";
 // and read the image out of the SSE stream.
 const RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 const CODEX_VERSION = "0.135.0";
-const REQUEST_TIMEOUT_S = 170;
+const REQUEST_TIMEOUT_S = 600;
 const MAX_EDIT_IMAGES = 5;
 
 const MIME_BY_EXT: Record<string, string> = {

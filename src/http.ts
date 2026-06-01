@@ -29,7 +29,7 @@ export interface HttpResponse {
 export class ImpersonatedSession {
   private session: any;
 
-  constructor(timeoutSeconds = 170) {
+  constructor(timeoutSeconds = 600) {
     this.session = getRequests().session({
       ja3: "auto",
       akamai: "auto",

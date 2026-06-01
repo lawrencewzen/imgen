@@ -1,5 +1,8 @@
 # imgen
 
+[![CI](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml/badge.svg)](https://github.com/aisparkedu/imgen/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Codex 图片生成 CLI —— 用本地 codex 登录的 ChatGPT **付费账号**（Plus/Pro…）生成图片，支持**文生图**和**图生图**。
 
 ## 原理
