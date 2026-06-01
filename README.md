@@ -1,4 +1,4 @@
-# imgen
+<h1 align="center">imgen</h1>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
