@@ -25,8 +25,8 @@ install_skill() {
 
 echo "==> Installing skills..."
 install_skill "$HOME/.claude/skills/imgen"
-install_skill "$HOME/.agent/skills/imgen"
+install_skill "$HOME/.codex/skills/imgen"
 
 echo ""
 echo "Done. imgen CLI: $(which imgen)"
-echo "Restart Claude Code / Agent to activate the skill."
+echo "Restart Claude Code / Codex to activate the skill."
