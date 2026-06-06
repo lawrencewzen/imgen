@@ -1,14 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { randomUUID } from "node:crypto";
-import { ImpersonatedSession } from "./http.js";
-// Image generation runs through the Codex Responses endpoint + the hosted
-// image_generation tool. The direct REST /images/generations route is not
-// deployed on the production backend (404), so we drive the tool via /responses
-// and read the image out of the SSE stream.
+import { detectTerminal, platformSandboxTag } from "./fingerprint.js";
+import { BASE_INSTRUCTIONS } from "./instructions.js";
 const RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
-const CODEX_VERSION = "0.135.0";
-const REQUEST_TIMEOUT_S = 600;
+export const REQUEST_TIMEOUT_S = 600;
 const MAX_EDIT_IMAGES = 5;
 const MIME_BY_EXT = {
     ".png": "image/png",
@@ -17,25 +13,69 @@ const MIME_BY_EXT = {
     ".webp": "image/webp",
     ".gif": "image/gif",
 };
+function createTurnContext(sessionId, threadId) {
+    return {
+        turnId: randomUUID(),
+        timestampMs: Date.now(),
+        sessionId,
+        threadId,
+        windowId: `${threadId}:0`,
+    };
+}
+function turnMetadataJson(ctx) {
+    return JSON.stringify({
+        turn_id: ctx.turnId,
+        turn_started_at_unix_ms: ctx.timestampMs,
+        session_id: ctx.sessionId,
+        thread_id: ctx.threadId,
+        sandbox: platformSandboxTag(),
+        request_kind: "turn",
+        window_id: ctx.windowId,
+        workspace_kind: "local",
+        has_changes: false,
+    });
+}
+// ---------------------------------------------------------------------------
+// User-Agent  (matches codex_cli_rs format exactly)
+// ---------------------------------------------------------------------------
+function buildUserAgent(identity) {
+    const base = `codex_cli_rs/${identity.codexVersion} (${identity.osType} ${identity.osVersion}; ${identity.arch})`;
+    const terminal = detectTerminal();
+    return terminal ? `${base} ${terminal}` : base;
+}
+// ---------------------------------------------------------------------------
+// Headers — full Codex CLI header set
+// ---------------------------------------------------------------------------
+function buildHeaders(token, accountId, identity, turn) {
+    const metadataStr = turnMetadataJson(turn);
+    return {
+        Authorization: `Bearer ${token}`,
+        ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        "OpenAI-Beta": "responses_websockets=2026-02-06",
+        originator: "codex_cli_rs",
+        "User-Agent": buildUserAgent(identity),
+        "OAI-Product-Sku": "codex",
+        "x-codex-installation-id": identity.installationId,
+        "x-codex-window-id": turn.windowId,
+        "x-responses": "api-include-timing-metrics",
+        "session-id": turn.sessionId,
+        "thread-id": turn.threadId,
+        "x-client-request-id": turn.turnId,
+        "x-codex-turn-metadata": metadataStr,
+    };
+}
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
 /** Validation/usage error → CLI exit code 2. */
 export function usageError(message) {
     return Object.assign(new Error(message), { exitCode: 2 });
 }
-function headers(token, accountId) {
-    return {
-        Authorization: `Bearer ${token}`,
-        ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
-        originator: "codex_cli_rs",
-        "User-Agent": `codex_cli_rs/${CODEX_VERSION}`,
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-        "x-codex-turn-metadata": JSON.stringify({
-            session_id: randomUUID(),
-            turn_id: randomUUID(),
-            sandbox: "seatbelt",
-        }),
-    };
-}
+// ---------------------------------------------------------------------------
+// Image helpers
+// ---------------------------------------------------------------------------
 /** Read an input image and return a base64 data URL. Throws usageError on problems. */
 export function imageToDataUrl(path) {
     if (!existsSync(path))
@@ -47,8 +87,7 @@ export function imageToDataUrl(path) {
     }
     return `data:${mime};base64,${readFileSync(path).toString("base64")}`;
 }
-/** image_generation tool config. Non-auto size/quality/background are passed through;
- *  the backend validates (e.g. longest edge must be ≤ 3840). */
+/** image_generation tool config. */
 export function imageTool(o) {
     const tool = { type: "image_generation" };
     if (o.size && o.size !== "auto")
@@ -59,6 +98,9 @@ export function imageTool(o) {
         tool["background"] = o.background;
     return tool;
 }
+// ---------------------------------------------------------------------------
+// Request body builder  (pure — no identity dependency, testable)
+// ---------------------------------------------------------------------------
 export function buildRequest(o, imageParts) {
     const content = [
         { type: "input_text", text: o.prompt },
@@ -66,14 +108,14 @@ export function buildRequest(o, imageParts) {
     ];
     return {
         model: o.model,
-        instructions: "You are an image generation assistant. When the user requests an image, " +
-            "immediately call the image_generation tool to create or edit it. Do not ask clarifying questions.",
+        instructions: BASE_INSTRUCTIONS,
         input: [{ type: "message", role: "user", content }],
         tools: [imageTool(o)],
         tool_choice: "auto",
+        parallel_tool_calls: false,
         stream: true,
         store: false,
-        reasoning: { effort: "low" },
+        reasoning: { effort: "medium" },
         text: { verbosity: "low" },
         include: ["reasoning.encrypted_content"],
     };
@@ -98,9 +140,7 @@ function parseSse(text) {
 function asLongB64(value) {
     return typeof value === "string" && value.length > 100 ? value : null;
 }
-/** Pull the generated image out of the SSE event stream.
- *  Prefers the final result on response.output_item.done; falls back to the
- *  last progressive partial_image. Exported for unit testing. */
+/** Pull the generated image out of the SSE event stream. */
 export function extractImage(text) {
     const events = parseSse(text);
     let finalB64 = null;
@@ -137,6 +177,9 @@ function describeFailure(event) {
         resp?.["error"];
     return err?.["message"] ?? null;
 }
+// ---------------------------------------------------------------------------
+// HTTP error mapping
+// ---------------------------------------------------------------------------
 function mapHttpError(status, text) {
     const detail = extractMessage(text);
     if (status === 401 || status === 403) {
@@ -159,25 +202,35 @@ function extractMessage(text) {
         return text.slice(0, 300);
     }
 }
-async function runRequest(token, accountId, request) {
-    const session = new ImpersonatedSession(REQUEST_TIMEOUT_S);
-    try {
-        const res = await session.post(RESPONSES_URL, headers(token, accountId), JSON.stringify(request));
-        if (res.status !== 200)
-            throw mapHttpError(res.status, res.text);
-        return extractImage(res.text);
-    }
-    finally {
-        session.close();
-    }
+// ---------------------------------------------------------------------------
+// Core request runner
+// ---------------------------------------------------------------------------
+async function runRequest(ctx, request) {
+    const turn = createTurnContext(ctx.sessionId, ctx.threadId);
+    // Enrich body with client_metadata (matches real Codex)
+    const body = {
+        ...request,
+        prompt_cache_key: ctx.threadId,
+        client_metadata: {
+            "x-codex-installation-id": ctx.identity.installationId,
+        },
+    };
+    const hdrs = buildHeaders(ctx.token, ctx.accountId, ctx.identity, turn);
+    const res = await ctx.session.post(RESPONSES_URL, hdrs, JSON.stringify(body));
+    if (res.status !== 200)
+        throw mapHttpError(res.status, res.text);
+    return extractImage(res.text);
 }
-export async function generate(token, accountId, o) {
-    return runRequest(token, accountId, buildRequest(o, []));
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+export async function generate(ctx, o) {
+    return runRequest(ctx, buildRequest(o, []));
 }
-export async function edit(token, accountId, o) {
+export async function edit(ctx, o) {
     if (o.imagePaths.length < 1 || o.imagePaths.length > MAX_EDIT_IMAGES) {
         throw usageError(`图生图需要 1~${MAX_EDIT_IMAGES} 张输入图，收到 ${o.imagePaths.length} 张`);
     }
     const parts = o.imagePaths.map((p) => ({ type: "input_image", image_url: imageToDataUrl(p) }));
-    return runRequest(token, accountId, buildRequest(o, parts));
+    return runRequest(ctx, buildRequest(o, parts));
 }
