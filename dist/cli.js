@@ -72,7 +72,7 @@ program
     .option("-s, --size <size>", "尺寸，如 1024x1024 / 3840x2160（最长边 ≤3840），默认 auto", "auto")
     .option("-q, --quality <q>", "low|medium|high|auto", "auto")
     .option("-b, --background <bg>", "transparent|opaque|auto", "auto")
-    .option("-m, --model <model>", "编排模型（负责调用图片工具）", "gpt-5.4")
+    .option("-m, --model <model>", "编排模型（负责调用图片工具）", "gpt-5.5")
     .option("--codex-home <dir>", "codex 目录", defaultCodexHome())
     .action(async (prompt, opts) => {
     await run(prompt, opts);

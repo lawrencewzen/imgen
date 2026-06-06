@@ -31,6 +31,8 @@ function turnMetadataJson(ctx) {
         sandbox: platformSandboxTag(),
         request_kind: "turn",
         window_id: ctx.windowId,
+        workspace_kind: "local",
+        has_changes: false,
     });
 }
 // ---------------------------------------------------------------------------
@@ -51,14 +53,16 @@ function buildHeaders(token, accountId, identity, turn) {
         ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
         "Content-Type": "application/json",
         Accept: "text/event-stream",
+        "OpenAI-Beta": "responses_websockets=2026-02-06",
         originator: "codex_cli_rs",
         "User-Agent": buildUserAgent(identity),
         "OAI-Product-Sku": "codex",
         "x-codex-installation-id": identity.installationId,
         "x-codex-window-id": turn.windowId,
+        "x-responses": "api-include-timing-metrics",
         "session-id": turn.sessionId,
         "thread-id": turn.threadId,
-        "x-client-request-id": turn.threadId,
+        "x-client-request-id": turn.turnId,
         "x-codex-turn-metadata": metadataStr,
     };
 }

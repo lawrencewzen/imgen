@@ -3,7 +3,7 @@
  *
  * Each installation gets a unique, stable combination of:
  *   - Chrome TLS profile  (JA3 + Akamai HTTP/2 fingerprint)
- *   - Codex CLI version   (from a pool of recent releases)
+ *   - Codex CLI version   (detected from the real local install)
  *   - Installation UUID   (x-codex-installation-id)
  *   - OS / arch metadata  (for User-Agent)
  *
@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { arch as osArch, platform, release } from "node:os";
+import { execSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 // Only Chrome versions from ~2024 onward.
 // Chrome 99/101/110 are 2–3 years old; Cloudflare's version-plausibility
@@ -22,13 +23,43 @@ const CHROME_POOL = [
     { label: "chrome131", ja3: "chrome131", akamai: "chrome119" },
     { label: "chrome133", ja3: "chrome133", akamai: "chrome119" },
 ];
-// Recent Codex CLI release versions — keep updated.
-const VERSION_POOL = [
-    "0.135.0",
-    "0.134.0",
-    "0.133.0",
-    "0.132.0",
-];
+const FALLBACK_VERSION = "0.135.0";
+/** Read the real Codex installation ID from <codexHome>/installation_id. */
+function detectInstallationId(codexHome) {
+    try {
+        const idPath = join(codexHome, "installation_id");
+        if (existsSync(idPath)) {
+            const id = readFileSync(idPath, "utf-8").trim();
+            if (id)
+                return id;
+        }
+    }
+    catch { /* fallback */ }
+    return randomUUID();
+}
+/** Detect the real Codex CLI version from the local installation. */
+function detectCodexVersion(codexHome) {
+    // 1. version.json written by Codex's auto-update check
+    try {
+        const vp = join(codexHome, "version.json");
+        if (existsSync(vp)) {
+            const vj = JSON.parse(readFileSync(vp, "utf-8"));
+            const v = vj["latest_version"];
+            if (typeof v === "string" && v)
+                return v;
+        }
+    }
+    catch { /* next strategy */ }
+    // 2. `codex --version` → "codex-cli X.Y.Z"
+    try {
+        const out = execSync("codex --version", { timeout: 3000 }).toString().trim();
+        const m = out.match(/(\d+\.\d+\.\d+)/);
+        if (m?.[1])
+            return m[1];
+    }
+    catch { /* fallback */ }
+    return FALLBACK_VERSION;
+}
 function pick(pool) {
     return pool[randomInt(pool.length)];
 }
@@ -40,11 +71,18 @@ export function detectPlatform() {
     const a = osArch() === "arm64" ? "aarch64" : osArch() === "x64" ? "x86_64" : osArch();
     const p = platform();
     if (p === "darwin") {
-        const r = release(); // Darwin kernel version, e.g. "24.5.0"
+        // Apple skipped macOS 16-25; Darwin-9 formula breaks on Darwin 25+.
+        // Use sw_vers like the real Codex CLI's os_info crate does.
+        try {
+            const ver = execSync("sw_vers -productVersion", { timeout: 2000 }).toString().trim();
+            if (ver)
+                return { osType: "macOS", osVersion: ver, arch: a };
+        }
+        catch { /* fallback below */ }
+        const r = release();
         const parts = r.split(".");
         const major = parseInt(parts[0] ?? "24", 10);
         const minor = parseInt(parts[1] ?? "0", 10);
-        // Darwin major - 9 = macOS major (Darwin 24.x → macOS 15.x)
         return { osType: "macOS", osVersion: `${major - 9}.${minor}`, arch: a };
     }
     if (p === "win32") {
@@ -94,8 +132,8 @@ export function loadOrCreateIdentity(codexHome) {
                         akamai: raw["akamai"],
                         label: raw["label"],
                     },
-                    codexVersion: pick(VERSION_POOL),
-                    installationId: randomUUID(),
+                    codexVersion: detectCodexVersion(codexHome),
+                    installationId: detectInstallationId(codexHome),
                     ...os,
                 };
                 writeFileSync(p, JSON.stringify(identity, null, 2));
@@ -109,8 +147,8 @@ export function loadOrCreateIdentity(codexHome) {
     const os = detectPlatform();
     const identity = {
         tls: pick(CHROME_POOL),
-        codexVersion: pick(VERSION_POOL),
-        installationId: randomUUID(),
+        codexVersion: detectCodexVersion(codexHome),
+        installationId: detectInstallationId(codexHome),
         ...os,
     };
     writeFileSync(p, JSON.stringify(identity, null, 2));
