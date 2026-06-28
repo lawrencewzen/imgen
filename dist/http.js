@@ -21,12 +21,20 @@ function getRequests() {
 export class ImpersonatedSession {
     session;
     constructor(timeoutSeconds = 600, ja3 = "auto", akamai = "auto") {
+        // chatgpt.com 在部分网络环境被墙，支持经代理出网。
+        // 优先级：IMGEN_PROXY > ALL_PROXY > HTTPS_PROXY > https_proxy
+        const proxy = process.env["IMGEN_PROXY"] ||
+            process.env["ALL_PROXY"] ||
+            process.env["HTTPS_PROXY"] ||
+            process.env["https_proxy"] ||
+            "";
         this.session = getRequests().session({
             ja3,
             akamai,
             httpVersion: "http2",
             redirect: false,
             timeout: timeoutSeconds,
+            ...(proxy ? { proxy } : {}),
         });
     }
     async post(url, headers, body) {

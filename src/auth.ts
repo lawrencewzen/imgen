@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { ImpersonatedSession } from "./http.js";
 
 export interface AuthTokens {
   access_token: string;
@@ -79,20 +80,27 @@ export function extractAccountId(accessToken: string): string | null {
 
 /** 用 refresh_token 换新 tokens；account_id 留给调用方填。 */
 export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {
-  const res = await fetch(TOKEN_REFRESH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_id: OAUTH_CLIENT_ID,
-    }),
-    signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    throw new Error(`token 刷新失败：${res.status} ${res.statusText}`);
+  // 走带 JA3 指纹 + 代理的 session：auth.openai.com 同样有 Cloudflare 盾，
+  // 且在被墙网络下需经代理（普通 fetch 既无指纹会 403、也不走代理）。
+  const session = new ImpersonatedSession(Math.ceil(REFRESH_TIMEOUT_MS / 1000));
+  let res;
+  try {
+    res = await session.post(
+      TOKEN_REFRESH_URL,
+      { "Content-Type": "application/json" },
+      JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: OAUTH_CLIENT_ID,
+      }),
+    );
+  } finally {
+    session.close();
   }
-  const data = (await res.json()) as Record<string, unknown>;
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`token 刷新失败：${res.status}`);
+  }
+  const data = JSON.parse(res.text) as Record<string, unknown>;
   return {
     access_token: (data["access_token"] as string | undefined) ?? "",
     id_token: (data["id_token"] as string | undefined) ?? "",
