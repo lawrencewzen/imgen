@@ -205,7 +205,25 @@ function extractMessage(text) {
 // ---------------------------------------------------------------------------
 // Core request runner
 // ---------------------------------------------------------------------------
-async function runRequest(ctx, request) {
+// 瞬时失败重试配置：后端常吐 "An error occurred while processing your request"
+// （200 流里的 response.failed）、429、5xx —— 这些 OpenAI 自己说 "You can retry"。
+const MAX_ATTEMPTS = 4;
+const RETRY_BACKOFF_MS = [2000, 6000, 15000]; // 第 2/3/4 次尝试前的等待
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** 仅对瞬时/服务端类错误重试；认证、400、输入校验等永久错误立即放弃。 */
+export function isRetryableFailure(message) {
+    const m = message.toLowerCase();
+    return (m.includes("an error occurred while processing your request") || // 后端瞬时内部错误
+        m.includes("后端未返回图片") || // SSE 空流，瞬时
+        message.includes("撞限流 (429)") || // 限流
+        /后端返回 5\d\d/.test(message) || // 5xx
+        m.includes("timeout") ||
+        m.includes("timed out") ||
+        m.includes("econnreset") ||
+        m.includes("socket") ||
+        m.includes("network"));
+}
+async function runRequestOnce(ctx, request) {
     const turn = createTurnContext(ctx.sessionId, ctx.threadId);
     // Enrich body with client_metadata (matches real Codex)
     const body = {
@@ -220,6 +238,26 @@ async function runRequest(ctx, request) {
     if (res.status !== 200)
         throw mapHttpError(res.status, res.text);
     return extractImage(res.text);
+}
+async function runRequest(ctx, request) {
+    let lastErr;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            // 每次尝试都用全新的 turn（runRequestOnce 内部新建 turnId）
+            return await runRequestOnce(ctx, request);
+        }
+        catch (err) {
+            lastErr = err;
+            const msg = err instanceof Error ? err.message : String(err);
+            const isUsage = err.exitCode === 2;
+            if (isUsage || attempt >= MAX_ATTEMPTS || !isRetryableFailure(msg))
+                throw err;
+            const wait = RETRY_BACKOFF_MS[attempt - 1] ?? 15000;
+            process.stderr.write(`第 ${attempt}/${MAX_ATTEMPTS} 次失败，${Math.round(wait / 1000)}s 后重试：${msg}\n`);
+            await sleep(wait);
+        }
+    }
+    throw lastErr;
 }
 // ---------------------------------------------------------------------------
 // Public API

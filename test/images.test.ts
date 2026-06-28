@@ -9,6 +9,7 @@ import {
   imageToDataUrl,
   extractImage,
   usageError,
+  isRetryableFailure,
   type GenOptions,
 } from "../src/images.js";
 
@@ -85,4 +86,24 @@ test("extractImage 失败事件抛错", () => {
 
 test("usageError 带 exitCode 2", () => {
   assert.equal((usageError("bad") as { exitCode?: number }).exitCode, 2);
+});
+
+test("isRetryableFailure：后端瞬时错误 / 空流 / 429 / 5xx / 网络 → 重试", () => {
+  assert.equal(
+    isRetryableFailure("图片生成失败：An error occurred while processing your request. ... request ID abc"),
+    true,
+  );
+  assert.equal(isRetryableFailure("图片生成失败：后端未返回图片"), true);
+  assert.equal(isRetryableFailure("撞限流 (429)：稍后再试。"), true);
+  assert.equal(isRetryableFailure("后端返回 503。"), true);
+  assert.equal(isRetryableFailure("request timed out"), true);
+});
+
+test("isRetryableFailure：认证 / 400 / 内容拒绝 → 不重试", () => {
+  assert.equal(isRetryableFailure("认证/权限失败 (401)：账号可能是免费号。"), false);
+  assert.equal(isRetryableFailure("请求被拒 (400)：bad size"), false);
+  assert.equal(
+    isRetryableFailure("Your request was rejected as a result of our safety system."),
+    false,
+  );
 });
